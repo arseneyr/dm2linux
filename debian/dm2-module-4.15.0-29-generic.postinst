@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+. /usr/share/debconf/confmodule
+
+if [ "`uname -r`" = "4.15.0-29-generic" ] ; then
+   depmod -a &
+fi
