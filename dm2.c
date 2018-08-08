@@ -131,18 +131,20 @@ static void dm2_slider_update(struct usb_dm2 *dev, struct dm2slider *slider, u8 
 
 static void dm2_leds_update(struct dm2 *dm2, u8 note, u8 vel)
 {
+	u16 leds;
 	if (note >= 16) {
 		return;
 	}
 
-	*((u16*)(dm2->leds)) &= (vel ? (1 << note) : ~(1 << note));
+	leds = *((u16*)(dm2->leds));
+
+	*((u16*)(dm2->leds)) = (vel ? leds | (1 << note) : leds & ~(1 << note));
 }
 
 static void dm2_leds_send(struct usb_dm2 *dev)
 {
 	struct dm2* dm2 = &dev->dm2;
 	if (memcmp(dm2->leds, dm2->prev_leds, sizeof(dm2->leds))) {
-		printk("%2ph", dm2->leds);
 		dm2_set_leds(dev, dm2->leds[0], dm2->leds[1]);
 		memcpy(dm2->prev_leds, dm2->leds, sizeof(dm2->leds));
 	}
@@ -256,56 +258,13 @@ static void dm2_internal_init(struct dm2 *dm2)
 
 
 /* MIDI processing */
-static void dm2_midi_process(struct usb_dm2 *dev, unsigned char byte)
+static void dm2_midi_process(struct usb_dm2 *dev, u8 input[3])
 {
-	int args = 0, args_required = 2;
-	unsigned char cmd, arg1, arg2 = 0;
-	struct dm2midi *dm2midi = &(dev->dm2midi);
-
-	printk("%1ph\n", &byte);
-
-	// Handle SysEx (0xf0..0xf7) here!
-
-	if (byte & 0x80) {
-		if (dm2midi->chan && ((byte & 0x0f) != dm2midi->chan)) {
-			dm2midi->in_rstatus = dm2midi->in_arg1 = 0;
-			return;
-		}
-		cmd = byte & 0xf0;
-		if ((cmd < 0x80) || (cmd > 0xc0) || (cmd == 0xa0)) {
-			dm2midi->in_rstatus = dm2midi->in_arg1 = 0;
-			return;
-		}
-		dm2midi->in_rstatus = byte;
-		dm2midi->in_arg1 = 0;
-		return;
-	}
-
-	cmd = dm2midi->in_rstatus & 0xf0;
-	if (!cmd) return;
-	if (cmd == 0xc0) args_required = 1;
-
-	// Fill argument in and check for completion
-	if (!dm2midi->in_arg1) {
-		dm2midi->in_arg1 = byte; args = 1;
-	} else {
-		arg2 = byte; args = 2;
-	}
-
-	arg1 = dm2midi->in_arg1;
-	if (args < args_required) return;
-	dm2midi->in_arg1 = 0;
-
-	switch (cmd) {
-	case 0x80:
-		arg2 = 0;
-	case 0x90:
+	switch (input[0]) {
 	case 0xb0:
-		dm2_leds_update(&dev->dm2, arg1, arg2);
+		dm2_leds_update(&dev->dm2, input[1], input[2]);
 	}
 }
-
-
 
 /* Midi functions */
 
@@ -359,11 +318,10 @@ static void dm2_midi_input_trigger(struct snd_rawmidi_substream *substream, int 
 static void dm2_midi_output_trigger(struct snd_rawmidi_substream *substream, int up)
 {
 	struct usb_dm2 *dev = substream->rmidi->private_data;
-	unsigned char byte;
+	u8 input[3];
 
-	while (snd_rawmidi_transmit_peek(substream, &byte, 1)) {
-		dm2_midi_process(dev, byte);
-		snd_rawmidi_transmit_ack(substream, 1);
+	while (snd_rawmidi_transmit(substream, input, 3) == 3) {
+		dm2_midi_process(dev, input);
 	}
 }
 
@@ -426,7 +384,6 @@ static int  dm2_midi_init(struct usb_dm2 *dev)
 
 	// Variables
 	dev->dm2midi.chan = 0;
-	dev->dm2midi.in_arg1 = dev->dm2midi.in_rstatus = dev->dm2midi.out_rstatus = 0;
 
 	return 0;
 }

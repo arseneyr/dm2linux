@@ -25,8 +25,6 @@ struct dm2midi {
 
 	u8		   	chan;		/* MIDI channel */
 	u8			out_rstatus;	/* MIDI Running status reminder */
-	u8			in_rstatus;	/* same for input */
-	u8			in_arg1;	/* 1st argument for input */
 };
 
 
