@@ -262,7 +262,7 @@ static void dm2_midi_process(struct usb_dm2 *dev, unsigned char byte)
 	unsigned char cmd, arg1, arg2 = 0;
 	struct dm2midi *dm2midi = &(dev->dm2midi);
 
-	printk("%3ph\n", byte);
+	printk("%1ph\n", &byte);
 
 	// Handle SysEx (0xf0..0xf7) here!
 
