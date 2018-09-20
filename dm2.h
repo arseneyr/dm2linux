@@ -36,6 +36,11 @@ struct dm2slider {
 	u8			midival;
 };
 
+struct dm2wheel {
+	u8			number;
+	s8			direction;
+};
+
 
 #define DM2_MIDINDEX 3
 #define DM2_MIDMASK 0x02
@@ -48,6 +53,7 @@ struct dm2 {
 	u8			curr_state[10];
 	struct dm2midi dm2midi;
 	struct dm2slider	sliders[3];
+	struct dm2wheel 	wheels[2];
 	int			initialize;	/* Signals that the pots have to be initalized */
 	u8 leds[2];
 	u8 prev_leds[2];
